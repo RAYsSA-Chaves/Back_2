@@ -11,18 +11,22 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *a, **o):
+        # Ler o csv
         df = pd.read_csv(o["arquivo"], encoding="utf-8-sig")
+        # Normaliza nomes das colunas
         df.columns = [c.strip().lower().lstrip("\ufeff") for c in df.columns]
 
+        # Se passado ao rodar, apaga todos os registros
         if o["truncate"]:
             Livro.objects.all().delete()
 
+        # Padroniza os dados
         df["titulo"] = df["titulo"].astype(str).str.strip()
         df["subtitulo"] = df["subtitulo"].astype(str).str.strip()
         df["isbn"] = df["isbn"].astype(str).str.strip()
         df["descricao"] = df["descricao"].astype(str).str.strip()
         df["idioma"] = df["idioma"].astype(str).str.strip()
-        df["ano"] = pd.to_datetime(df["ano"], errors="coerce", format="%Y-%m-%d").dt.year
+        df["ano"] = df["ano"].astype(int)
         df["paginas"] = df["paginas"].astype(int)
         df["preco"] = df["preco"].astype(float)
         df["estoque"] = df["estoque"].astype(int)
@@ -31,24 +35,64 @@ class Command(BaseCommand):
         df["dimensoes"] = df["dimensoes"].astype(str).str.strip().replace({"": "Desconhecido"})
         df["peso"] = df["peso"].astype(str).str.strip().replace({"": "Desconhecido"})
 
-        # Buscar os autores e editoras no banco
-        autores_busca = {autor.nome.strip().lower(): autor.id for autor in Autor.objects.all()}
-        editoras_busca = {editora.nome.strip().lower(): editora.id for editora in Editora.objects.all()}
+        # Pegar autores existentes na tabela
+        autores_banco = Autor.objects.all()
+        autores_existentes = []
+        for autor in autores_banco:
+            autores_existentes.append({"nome_completo": autor.nome + " " + autor.sobrenome, "id": autor.id})
 
-        # Mapear IDs
-        df["autor_id"] = df["autor"].str.strip().str.lower().map(autores_busca)
-        df["editora_id"] = df["editora"].str.strip().str.lower().map(editoras_busca)
+        # Pegar editoras existentes na tabela
+        editoras_banco = Editora.objects.all()
+        editoras_existentes = []
+        for editora in editoras_banco:
+            editoras_existentes.append({"editora": editora.editora, "id": editora.id})
 
-        df = df.dropna(subset=["titulo", "isbn", "autor", "editora"])
+        # Guardar os IDs de autor e editora
+        autores_ids = []
+        editoras_ids = []
+
+        for i in range(len(df)):
+            # Verifica se autor existe
+            autor_obj = None
+            for a in autores_banco:
+                if (a.nome + " " + a.sobrenome).lower() == df.loc[i, "autor"].strip().lower():
+                    autor_obj = a
+                    break
+            autores_ids.append(autor_obj)
+
+            # Verifica se editora existe
+            editora_obj = None
+            for e in editoras_banco:
+                if e.editora.lower() == df.loc[i, "editora"].strip().lower():
+                    editora_obj = e
+                    break
+            # Se não existe, cria na tabela de editoras
+            if editora_obj is None:
+                editora_obj = Editora.objects.create(editora=df.loc[i, "editora"].strip())
+                editoras_banco = list(editoras_banco) + [editora_obj]  # adiciona à lista
+
+            editoras_ids.append(editora_obj)
+
+        # Pega os IDs automaticamente (porque está sendo passado como uma ForeignKey) e adiciona ao DataFrame
+        df["autor_id"] = autores_ids
+        df["editora_id"] = editoras_ids
+
+        # Excluir linhas que não tiverem titulo, isbn, autor e editora
+        df = df.dropna(subset=["titulo", "isbn", "autor_id", "editora_id"])
+        # Excluir linhas que tiverem preço inválido
         df = df.query("preco >= 0")
 
+        # Atualiza ou cria registros
         if o["update"]:
             criados = atualizados = 0
             for r in df.itertuples(index=False):
                 _, created = Livro.objects.update_or_create(
-                    titulo=r.titulo, subtitulo=r.subtitulo, isbn=r.isbn, descricao=r.descricao, paginas=r.paginas, ano=r.ano, preco=r.preco, estoque=r.estoque, desconto=r.desconto, disponivel=r.disponivel, dimensoes=r.dismensoes, peso=r.peso, idioma=r.idioma, 
+                    # Parâmetros de busca para localizar se o registro já existe no banco
+                    titulo=r.titulo, subtitulo=r.subtitulo, isbn=r.isbn, descricao=r.descricao, paginas=r.paginas, ano=r.ano, preco=r.preco, estoque=r.estoque, desconto=r.desconto, disponivel=r.disponivel, dimensoes=r.dimensoes, peso=r.peso, idioma=r.idioma, 
                     autor=r.autor_id, 
                     editora=r.editora_id,
+
+                    defaults={"preco": r.preco, "estoque":r.estoque, "desconto":r.desconto, "disponivel":r.disponivel}
                 )
 
                 criados += int(created)
@@ -58,7 +102,7 @@ class Command(BaseCommand):
 
         else:
             objs = [Livro(
-                titulo=r.titulo, subtitulo=r.subtitulo, isbn=r.isbn, descricao=r.descricao, paginas=r.paginas, ano=r.ano, preco=r.preco, estoque=r.estoque, desconto=r.desconto, disponivel=r.disponivel, dimensoes=r.dismensoes, peso=r.peso, idioma=r.idioma, 
+                titulo=r.titulo, subtitulo=r.subtitulo, isbn=r.isbn, descricao=r.descricao, paginas=r.paginas, ano=r.ano, preco=r.preco, estoque=r.estoque, desconto=r.desconto, disponivel=r.disponivel, dimensoes=r.dimensoes, peso=r.peso, idioma=r.idioma, 
                 autor=r.autor_id, 
                 editora=r.editora_id,
             ) for r in df.itertuples(index=False)]

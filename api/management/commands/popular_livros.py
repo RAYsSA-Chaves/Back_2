@@ -63,6 +63,7 @@ class Command(BaseCommand):
             # Verifica se editora existe
             editora_obj = None
             for e in editoras_banco:
+                # loc acessa linha e coluna
                 if e.editora.lower() == df.loc[i, "editora"].strip().lower():
                     editora_obj = e
                     break

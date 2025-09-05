@@ -37,15 +37,9 @@ class Command(BaseCommand):
 
         # Pegar autores existentes na tabela
         autores_banco = Autor.objects.all()
-        autores_existentes = []
-        for autor in autores_banco:
-            autores_existentes.append({"nome_completo": autor.nome + " " + autor.sobrenome, "id": autor.id})
 
         # Pegar editoras existentes na tabela
         editoras_banco = Editora.objects.all()
-        editoras_existentes = []
-        for editora in editoras_banco:
-            editoras_existentes.append({"editora": editora.editora, "id": editora.id})
 
         # Guardar os IDs de autor e editora
         autores_ids = []

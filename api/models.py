@@ -11,7 +11,7 @@ class Autor(models.Model):
         return f"{self.nome} {self.sobrenome}"
     
 class Editora(models.Model):
-    editora = models.CharField(max_length=100)
+    editora = models.CharField(max_length=100, unique=True)
     cnpj = models.CharField(max_length=18, unique=True, null=True, blank=True)
     endereço = models.CharField(max_length=200, null=True, blank=True)
     telefone = models.CharField(max_length=20, null=True, blank=True)

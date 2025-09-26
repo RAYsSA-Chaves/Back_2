@@ -2,8 +2,8 @@ export interface Livro {
     id: number;
     titulo: string;
     subtitulo?: string | null;
-    autorId: number;
-    editoraId: number;
+    autor: number;
+    editora: number;
     isbn?: string | null;
     descricao?: string | null;
     paginas?: number | null;

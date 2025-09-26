@@ -7,7 +7,7 @@ import { Livro } from '../../models/livro';
 import { Editora } from '../../models/editora';
 import { Autor } from '../../models/autor';
 import { AuthService } from '../../services/auth.services';
-import { forkJoin } from 'rxjs';
+import { forkJoin } from 'rxjs';  // permite executar vários Observables em paralelo e aguardar todos finalizarem para retornar os resultados juntos
 
 @Component({
   standalone: true,
@@ -25,11 +25,11 @@ import { forkJoin } from 'rxjs';
           @for (a of livros(); track a.id) {
             <li style="margin:.25rem 0">
               <strong>{{ a.titulo }} {{ "-" }} {{ a.subtitulo }}</strong>
-              @if (a.autorId) {
-                — <em>{{ getNomeAutor(a.autor) }}</em>
+              @if (a.autor) {
+                — <em style="color:#666">{{ getNomeAutor(a.autor) }}</em>
               }
-              @if (a.editoraId) {
-                — <em>{{ getNomeEditora(a.editora) }}</em>
+              @if (a.editora) {
+                — <em style="color:#666">{{ getNomeEditora(a.editora) }}</em>
               }
               @if (a.isbn) { • {{ a.isbn }} }
               @if (a.descricao) { • {{ a.descricao }} }
@@ -54,37 +54,43 @@ import { forkJoin } from 'rxjs';
   `
 })
 export class LivrosPage {
-  private svc = inject(LivrosServices);
-  private editorasSvc = inject(EditorasServices);
-  private autoresSvc = inject(AutoresServices);
-  private auth = inject(AuthService);   //Ver o token
+  private svc = inject(LivrosServices); // serviço que puxa livros
+  private editorasSvc = inject(EditorasServices); // serviço que puxa editoras
+  private autoresSvc = inject(AutoresServices); // serviço que puxa autores
+  private auth = inject(AuthService);   // autenticação/token
 
+  // listas que serão carregadas do backend (guarda o que o serviço puxa)
   livros = signal<Livro[]>([]);
   autores = signal<Autor[]>([]);
   editoras = signal<Editora[]>([]);
 
+  // controla o estado de "carregando..." na interface
   carregando = signal(true);
+  // guarda uma mensagem de erro, caso algo dê errado
   erro = signal<string | null>(null);
 
   constructor() {
+    // Mostra o token de autenticação no console
     console.log("Token de acesso: ", this.auth.token());
-
+    // Ativa o carregamento
     this.carregando.set(true);
     
+    // Faz requisições paralelas
     forkJoin({
       livros: this.svc.listar(),
       editoras: this.editorasSvc.listar(),
       autores: this.autoresSvc.listar()
-    }).subscribe({
+    }).subscribe({  
+      // Atualiza os signals com os dados retornados
       next: ({ livros, editoras, autores }) => {
         this.livros.set(livros);
         this.editoras.set(editoras);
         this.autores.set(autores);
-        this.carregando.set(false);
+        this.carregando.set(false); // desativa o carregamento
       },
       error: () => {
-        this.erro.set('Falha ao carregar livros');
-        this.carregando.set(false);
+        this.erro.set('Falha ao carregar livros'); // define mensagem de erro
+        this.carregando.set(false); // desativa o carregamento
       }
     });
   }
@@ -94,7 +100,6 @@ export class LivrosPage {
     const editora = this.editoras().find(e => e.id === id);
     return editora ? editora.editora : 'Não informada';
   }
-
   getNomeAutor(id: number): string {
     const autor = this.autores().find(a => a.id === id);
     return autor ? autor.nome : 'Não informado';

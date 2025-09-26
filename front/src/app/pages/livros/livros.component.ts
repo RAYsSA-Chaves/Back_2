@@ -26,10 +26,10 @@ import { forkJoin } from 'rxjs';
             <li style="margin:.25rem 0">
               <strong>{{ a.titulo }} {{ "-" }} {{ a.subtitulo }}</strong>
               @if (a.autorId) {
-                — <em>{{ getNomeAutor(a.autorId) }}</em>
+                — <em>{{ getNomeAutor(a.autor) }}</em>
               }
               @if (a.editoraId) {
-                — <em>{{ getNomeEditora(a.editoraId) }}</em>
+                — <em>{{ getNomeEditora(a.editora) }}</em>
               }
               @if (a.isbn) { • {{ a.isbn }} }
               @if (a.descricao) { • {{ a.descricao }} }

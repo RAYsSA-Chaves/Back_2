@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { EditorasServices } from '../../services/editoras.services';
 import { Editora } from '../../models/editora';
-import { EditoraService } from '../../services/editors.services';
+import { AuthService } from '../../services/auth.services';
 
 @Component({
   standalone: true,
@@ -17,13 +17,13 @@ import { EditoraService } from '../../services/editors.services';
         <p style="color:#c62828">{{ erro() }}</p>
       } @else {
         <ul style="padding-left:1.25rem">
-          @for (a of autores(); track a.id) {
+          @for (a of editoras(); track a.id) {
             <li style="margin:.25rem 0">
               <strong>{{ a.editora }}</strong>
               @if (a.cnpj) { — <em style="color:#666">{{ a.cnpj }}</em> }
-              @if (a.endereço) { • {{ a.endereço }} }
-              @if (a.telefone) { <div style="color:#555">{{ a.telefone }}
-              @if (a.email) { <div style="color:#555">{{ a.email }}
+              @if (a['endereço']) { • {{ a['endereço'] }} }
+              @if (a.telefone) { • {{ a.telefone }} }
+              @if (a.email) { • {{ a.email }} }
               @if (a.site) { <div style="color:#555">{{ a.site }}</div> }
             </li>
           }
@@ -36,15 +36,15 @@ import { EditoraService } from '../../services/editors.services';
     </section>
   `
 })
-export class AutoresPage {
+export class EditorasPage {
   private svc = inject(EditorasServices);
-  private auth = inject(EditorasServices);   //Ver o token
-  autores = signal<Editora[]>([]);
+  private auth = inject(AuthService);   //Ver o token
+  editoras = signal<Editora[]>([]);
   carregando = signal(true);
   erro = signal<string | null>(null);
 
   constructor() {
-    console.log("Token de acesso: ", this.editora.token());
+    console.log("Token de acesso: ", this.auth.token());
     
     this.svc.listar().subscribe({
       next: (data) => { this.editoras.set(data); this.carregando.set(false); },
